@@ -1,12 +1,13 @@
 import CodeWorld
 
-drawTile :: Integer -> Picture
-drawTile n
-  | n == 0    = background
-  | n == 1    = wall
-  | n == 2    = ground
-  | n == 3    = storage
-  | otherwise = box
+data Tile = Wall | Ground | Storage | Box | Blank
+
+drawTile :: Tile -> Picture
+drawTile Wall = wall
+drawTile Ground = ground
+drawTile Storage = storage
+drawTile Box = box
+drawTile Blank = background
 
 background :: Picture
 background = colored white (solidRectangle 1.0 1.0)
@@ -23,14 +24,14 @@ storage = colored black (solidCircle 0.25 ) & ground
 box :: Picture
 box = colored brown (solidRectangle 1.0 1.0)
 
-maze :: Integer -> Integer -> Integer
+maze :: Integer -> Integer -> Tile
 maze x y
-  | abs x > 4  || abs y > 4  = 0
-  | abs x == 4 || abs y == 4 = 1
-  | x ==  2 && y <= 0        = 1
-  | x ==  3 && y <= 0        = 3
-  | x >= -2 && y == 0        = 4
-  | otherwise                = 2
+  | abs x > 4  || abs y > 4  = Blank
+  | abs x == 4 || abs y == 4 = Wall
+  | x ==  2 && y <= 0        = Wall
+  | x ==  3 && y <= 0        = Storage
+  | x >= -2 && y == 0        = Box
+  | otherwise                = Ground
 
 positionBlock :: (Integer, Integer) -> Picture
 positionBlock (x, y) = translated (fromIntegral x) (fromIntegral y) (drawTile( maze x y ))
