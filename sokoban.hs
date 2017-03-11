@@ -35,11 +35,11 @@ maze x y
 positionBlock :: (Integer, Integer) -> Picture
 positionBlock (x, y) = translated (fromIntegral x) (fromIntegral y) (drawTile( maze x y ))
 
-getCoords :: Integer -> Integer -> (Integer, Integer)
-getCoords x y = (x, y)
+completeCoord :: Integer -> Integer -> (Integer, Integer)
+completeCoord x y = (x, y)
 
 getYs :: Integer -> [(Integer, Integer)]
-getYs x = map (getCoords x) [-10..10]
+getYs x = map (completeCoord x) [-10..10]
 
 getAllCoords :: [(Integer, Integer)]
 getAllCoords = [-10..10] >>= getYs
