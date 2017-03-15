@@ -47,23 +47,23 @@ maze x y
   | x >= -2 && y == 0        = Box
   | otherwise                = Ground
 
-positionBlock :: (Integer, Integer) -> Picture
-positionBlock (x, y) = translated (fromIntegral x) (fromIntegral y) (drawTile( maze x y ))
+positionBlock :: Coord -> Picture
+positionBlock (C x y) = translated (fromIntegral x) (fromIntegral y) (drawTile( maze x y ))
 
-completeCoord :: Integer -> Integer -> (Integer, Integer)
-completeCoord x y = (x, y)
+completeCoord :: Integer -> Integer -> Coord
+completeCoord x y = C x y
 
-getYs :: Integer -> [(Integer, Integer)]
+getYs :: Integer -> [Coord]
 getYs x = map (completeCoord x) [-10..10]
 
-getAllCoords :: [(Integer, Integer)]
+getAllCoords :: [Coord]
 getAllCoords = [-10..10] >>= getYs
 
 pictureOfMaze :: Picture
 pictureOfMaze = foldl (&) blank ( map positionBlock getAllCoords )
 
 initialCoord :: Coord
-initialCoord = C 0 0
+initialCoord = C 0 (-1)
 
 step :: Direction -> Coord -> Coord
 step U (C x y) = C x (y+1)
@@ -86,8 +86,21 @@ handleTime _ c = c
 drawGame :: Coord -> Picture
 drawGame c = (atCoord c player) & pictureOfMaze
 
+initialBoxes :: [Coord] --finds coords of boxes in maze
+initialBoxes = filter (\(C x y) -> isBox (maze x y)) getAllCoords
+
+isBox :: Tile -> Bool
+isBox Box = True
+isBox _ = False
+
+canMove :: Tile -> Bool
+canMove Ground = True
+canMove Storage = True
+canMove _ = False
+
 atCoord :: Coord -> Picture -> Picture
 atCoord (C x y) p = translated (fromIntegral x) (fromIntegral y) p
 
 main :: IO()
 main = interactionOf initialCoord handleTime handleEvent drawGame
+--main = print (initialBoxes)
