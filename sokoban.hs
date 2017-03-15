@@ -60,9 +60,9 @@ getAllCoords :: [Coord]
 getAllCoords = [-10..10] >>= getYs
 
 pictureOfMaze :: Picture
-pictureOfMaze = foldl (&) blank ( map positionBlock getAllCoords )
+pictureOfMaze = composePictures ( drawMazeElements getAllCoords )
 
-initialCoord :: Coord
+initialCoord :: Coord --hardcoded
 initialCoord = C 0 (-1)
 
 step :: Direction -> Coord -> Coord
@@ -70,7 +70,6 @@ step U (C x y) = C x (y+1)
 step D (C x y) = C x (y-1)
 step L (C x y) = C (x-1) y
 step R (C x y) = C (x+1) y
-step _ c = c
 
 handleEvent :: Event -> Coord -> Coord
 handleEvent (KeyPress key) c
@@ -104,6 +103,9 @@ atCoord (C x y) p = translated (fromIntegral x) (fromIntegral y) p
 composePictures :: [Picture] -> Picture
 composePictures ps = foldl (&) blank ps
 
+drawMazeElements :: [Coord] -> [Picture]
+drawMazeElements cs = map positionBlock cs
+
 main :: IO()
-main = interactionOf initialCoord handleTime handleEvent drawGame
---main = print (initialBoxes)
+--main = interactionOf initialCoord handleTime handleEvent drawGame
+main = drawingOf (composePictures (drawMazeElements initialBoxes))
