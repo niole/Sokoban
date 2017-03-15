@@ -84,7 +84,7 @@ handleTime :: Double -> Coord -> Coord
 handleTime _ c = c
 
 drawGame :: Coord -> Picture
-drawGame c = (atCoord c player) & pictureOfMaze
+drawGame c = composePictures [(atCoord c player), pictureOfMaze ]
 
 initialBoxes :: [Coord] --finds coords of boxes in maze
 initialBoxes = filter (\(C x y) -> isBox (maze x y)) getAllCoords
@@ -100,6 +100,9 @@ canMove _ = False
 
 atCoord :: Coord -> Picture -> Picture
 atCoord (C x y) p = translated (fromIntegral x) (fromIntegral y) p
+
+composePictures :: [Picture] -> Picture
+composePictures ps = foldl (&) blank ps
 
 main :: IO()
 main = interactionOf initialCoord handleTime handleEvent drawGame
