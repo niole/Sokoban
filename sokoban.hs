@@ -112,14 +112,21 @@ stepLeft (C x y) = (C (x-1) y)
 stepRight :: Coord -> Coord
 stepRight (C x y) = (C (x+1) y)
 
+isDone :: [Coord] -> Bool
+isDone boxes = all (\c -> isStorage (maze c)) boxes
+
+isStorage :: Tile -> Bool
+isStorage Storage = True
+isStorage _ = False
+
 {--
         Takes proposed direction, old state and proposed
         new player position and returns a valid state
 --}
 getValidStep :: Direction -> State -> Coord -> State
 getValidStep direction (State c d cs) newCoord
-        | isBox newCoord cs = trace ( T.pack("next boxes " ++ show (getValidBoxMove direction (State c d cs) newCoord))) (getValidBoxMove direction (State c d cs) newCoord)
-        | isOk (maze newCoord) = trace ( T.pack("no box change" ++ show( State newCoord direction cs))) (State newCoord direction cs)
+        | isBox newCoord cs = getValidBoxMove direction (State c d cs) newCoord
+        | isOk (maze newCoord) = State newCoord direction cs
         | otherwise = (State c d cs)
 
 {--
@@ -171,7 +178,15 @@ handleTime :: Double -> Coord -> Coord
 handleTime _ c = c
 
 drawGameState :: State -> Picture
-drawGameState (State c _ bs) = composePictures [(atCoord c player), pictureOfMaze bs ]
+drawGameState (State c _ bs) = composePictures [showEndScreen bs, (atCoord c player), pictureOfMaze bs ]
+
+endScreen :: Picture
+endScreen = scaled 3 3 (text "you win!")
+
+showEndScreen :: [Coord] -> Picture
+showEndScreen boxes
+        | isDone boxes = endScreen
+        | otherwise = blank
 
 drawMazeElements :: [Coord] -> [Coord] -> [Picture]
 drawMazeElements boxes allCoords = (map (positionBlock (\_ -> Box)) boxes) ++ (map (positionBlock maze) allCoords)
