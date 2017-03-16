@@ -148,6 +148,7 @@ getValidBoxMove R oldState playerPos = checkBoxStep stepRight playerPos oldState
 --}
 checkBoxStep :: (Coord -> Coord) -> Coord -> State -> Direction -> State
 checkBoxStep stepper p (State oldP oldDir bs) newDir
+        | isBox (stepper p) bs = (State oldP oldDir bs)
         | isOk (maze (stepper p)) = State p newDir (updateBoxState stepper p bs)
         | otherwise = State oldP oldDir bs
 
@@ -222,7 +223,7 @@ runInteraction (Interaction state0 step handle draw)
   = interactionOf state0 step handle draw
 
 initialBoxes :: [Coord] --finds coords of boxes in maze
-initialBoxes = [C (-1) 0, C 0 0, C 1 0, C 2 0]
+initialBoxes = [C (-2) 0, C (-1) 0, C 0 0, C 1 0]
 
 atCoord :: Coord -> Picture -> Picture
 atCoord (C x y) p = translated (fromIntegral x) (fromIntegral y) p
