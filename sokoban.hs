@@ -74,16 +74,20 @@ initialState :: State --hardcoded
 initialState = State (C 0 (-1)) D
 
 step :: Direction -> State -> State
-step U (State coord _) = State (getStep U coord) U
-step D (State coord _) = State (getStep D coord) D
-step L (State coord _) = State (getStep L coord) L
-step R (State coord _) = State (getStep R coord) R
+step U (State (C x y) d)  = getValidStep U (State (C x y) d)  (C x (y+1))
+step D (State (C x y) d) = getValidStep D (State (C x y) d)  (C x (y-1))
+step L (State (C x y) d) = getValidStep L (State (C x y) d)  (C (x-1) y)
+step R (State (C x y) d) = getValidStep R (State (C x y) d)  (C (x+1) y)
 
-getStep :: Direction -> Coord -> Coord
-getStep U (C x y) = C x (y+1)
-getStep D (C x y) = C x (y-1)
-getStep L (C x y) = C (x-1) y
-getStep R (C x y) = C (x+1) y
+getValidStep :: Direction -> State -> Coord -> State
+getValidStep direction oldState (C x y)
+        | isOk (maze x y) = State (C x y) direction
+        | otherwise = oldState
+
+isOk :: Tile -> Bool
+isOk Ground = True
+isOk Storage = True
+isOk _ = False
 
 handleEvent :: Event -> State -> State
 handleEvent (KeyPress key) state
@@ -135,11 +139,6 @@ initialBoxes = filter (\(C x y) -> isBox (maze x y)) getAllCoords
 isBox :: Tile -> Bool
 isBox Box = True
 isBox _ = False
-
-canMove :: Tile -> Bool
-canMove Ground = True
-canMove Storage = True
-canMove _ = False
 
 atCoord :: Coord -> Picture -> Picture
 atCoord (C x y) p = translated (fromIntegral x) (fromIntegral y) p
