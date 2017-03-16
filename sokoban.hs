@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 import CodeWorld
+import qualified Data.Text as T
 
 {--
 rules:
@@ -10,16 +11,31 @@ rules:
 --}
 
 data Tile = Wall | Ground | Storage | Box | Blank
+
 data Direction = U | D | L | R
+instance Show Direction where
+        show d = directionMap d
+
+directionMap :: Direction -> String
+directionMap U = "U"
+directionMap L = "L"
+directionMap R = "R"
+directionMap D = "D"
+
 data Coord = C Integer Integer
-data State = State (Coord, [Coord]) Direction
+instance Show Coord where
+        show (C x y) = "(C "++ show x ++ ", " ++ show y ++")"
+
+data State = State Coord Direction [Coord]
+instance Show State where
+  show (State c d bs) = "State (" ++ show c ++ show bs ++ ") " ++ show d
+
 data SSState world = StartScreen | Running world --polymorphic in terms of world
 data Interaction world = Interaction
         world
         (Double -> world -> world)
         (Event -> world -> world)
         (world -> Picture)
-
 
 drawTile :: Tile -> Picture
 drawTile Wall    = wall
@@ -73,16 +89,16 @@ pictureOfMaze boxes = composePictures ( drawMazeElements boxes getAllCoords )
         hardcoded
 --}
 initialState :: State
-initialState = State (C 0 (-1), initialBoxes) D
+initialState = State (C 0 (-1)) D initialBoxes
 
 {--
         based on new direction, returns a valid game state
 --}
 step :: Direction -> State -> State
-step U (State (p, bs) d) = getValidStep U (State (p, bs) d) (stepUp p)
-step D (State (p, bs) d) = getValidStep D (State (p, bs) d) (stepDown p)
-step L (State (p, bs) d) = getValidStep L (State (p, bs) d) (stepLeft p)
-step R (State (p, bs) d) = getValidStep R (State (p, bs) d) (stepRight p)
+step U (State p d bs) = getValidStep U (State p d bs) (stepUp p)
+step D (State p d bs) = getValidStep D (State p d bs) (stepDown p)
+step L (State p d bs) = getValidStep L (State p d bs) (stepLeft p)
+step R (State p d bs) = getValidStep R (State p d bs) (stepRight p)
 
 stepUp :: Coord -> Coord
 stepUp (C x y) = (C x (y+1))
@@ -101,10 +117,10 @@ stepRight (C x y) = (C (x+1) y)
         new player position and returns a valid state
 --}
 getValidStep :: Direction -> State -> Coord -> State
-getValidStep direction (State (c, cs) d) newCoord
-        | isOk (maze newCoord) = (State (newCoord, cs) direction)
-        | isBox newCoord cs = getValidBoxMove direction (State (c, cs) d) newCoord
-        | otherwise = (State (c, cs) d)
+getValidStep direction (State c d cs) newCoord
+        | isBox newCoord cs = trace ( T.pack("next boxes " ++ show (getValidBoxMove direction (State c d cs) newCoord))) (getValidBoxMove direction (State c d cs) newCoord)
+        | isOk (maze newCoord) = trace ( T.pack("no box change" ++ show( State newCoord direction cs))) (State newCoord direction cs)
+        | otherwise = (State c d cs)
 
 {--
         given a direction, old state, and proposed new
@@ -124,12 +140,12 @@ getValidBoxMove R oldState playerPos = checkBoxStep stepRight playerPos oldState
         otherwise returns old state
 --}
 checkBoxStep :: (Coord -> Coord) -> Coord -> State -> Direction -> State
-checkBoxStep stepper p (State (oldP, bs) oldDir) newDir
-        | (isOk (maze (stepper p)) && not (isBox (stepper p) bs)) = State (p, updateBoxState stepper p bs) newDir
-        | otherwise = State (oldP, bs) oldDir
+checkBoxStep stepper p (State oldP oldDir bs) newDir
+        | isOk (maze (stepper p)) = State p newDir (updateBoxState stepper p bs)
+        | otherwise = State oldP oldDir bs
 
 updateBoxState :: (Coord -> Coord) -> Coord -> [Coord] -> [Coord]
-updateBoxState stepper p bs = map (\b -> if (eqCoords p b) then (stepper b) else b) bs
+updateBoxState stepper p bs = map (\b -> if (eqCoords p b) then stepper b else b) bs
 
 eqCoords :: Coord -> Coord -> Bool
 eqCoords (C x y) (C x1 y1) = x == x1 && y == y1
@@ -155,7 +171,7 @@ handleTime :: Double -> Coord -> Coord
 handleTime _ c = c
 
 drawGameState :: State -> Picture
-drawGameState (State (c, bs) _) = composePictures [(atCoord c player), pictureOfMaze bs ]
+drawGameState (State c _ bs) = composePictures [(atCoord c player), pictureOfMaze bs ]
 
 drawMazeElements :: [Coord] -> [Coord] -> [Picture]
 drawMazeElements boxes allCoords = (map (positionBlock (\_ -> Box)) boxes) ++ (map (positionBlock maze) allCoords)
