@@ -12,6 +12,14 @@ rules:
 data Tile = Wall | Ground | Storage | Box | Blank
 data Direction = U | D | L | R
 data Coord = C Integer Integer
+data State = State Coord Direction
+data SSState world = StartScreen | Running world --polymorphic in terms of world
+data Interaction world = Interaction
+        world
+        (Double -> world -> world)
+        (Event -> world -> world)
+        (world -> Picture)
+
 
 drawTile :: Tile -> Picture
 drawTile Wall    = wall
@@ -62,28 +70,64 @@ getAllCoords = [-10..10] >>= getYs
 pictureOfMaze :: Picture
 pictureOfMaze = composePictures ( drawMazeElements getAllCoords )
 
-initialCoord :: Coord --hardcoded
-initialCoord = C 0 (-1)
+initialState :: State --hardcoded
+initialState = State (C 0 (-1)) D
 
-step :: Direction -> Coord -> Coord
-step U (C x y) = C x (y+1)
-step D (C x y) = C x (y-1)
-step L (C x y) = C (x-1) y
-step R (C x y) = C (x+1) y
+step :: Direction -> State -> State
+step U (State coord _) = State (getStep U coord) U
+step D (State coord _) = State (getStep D coord) D
+step L (State coord _) = State (getStep L coord) L
+step R (State coord _) = State (getStep R coord) R
 
-handleEvent :: Event -> Coord -> Coord
-handleEvent (KeyPress key) c
-    | key == "Right" = step R c
-    | key == "Up"    = step U c
-    | key == "Left"  = step L c
-    | key == "Down"  = step D c
-handleEvent _ c      = c
+getStep :: Direction -> Coord -> Coord
+getStep U (C x y) = C x (y+1)
+getStep D (C x y) = C x (y-1)
+getStep L (C x y) = C (x-1) y
+getStep R (C x y) = C (x+1) y
+
+handleEvent :: Event -> State -> State
+handleEvent (KeyPress key) state
+    | key == "Right" = step R state
+    | key == "Up"    = step U state
+    | key == "Left"  = step L state
+    | key == "Down"  = step D state
+handleEvent _ state      = state
 
 handleTime :: Double -> Coord -> Coord
 handleTime _ c = c
 
-drawGame :: Coord -> Picture
-drawGame c = composePictures [(atCoord c player), pictureOfMaze ]
+drawGameState :: State -> Picture
+drawGameState (State c _) = composePictures [(atCoord c player), pictureOfMaze ]
+
+resetable :: Interaction s -> Interaction s
+resetable (Interaction state0 step handle draw)
+  = Interaction state0 step handle' draw
+  where handle' (KeyPress key) _ | key == "Esc" = state0
+        handle' e s = handle e s
+
+withStartScreen :: Interaction s -> Interaction (SSState s)
+withStartScreen (Interaction state0 step handle draw)
+  = Interaction state0' step' handle' draw'
+  where
+    state0' = StartScreen
+
+    step' _ StartScreen = StartScreen
+    step' t (Running s) = Running (step t s)
+
+    handle' (KeyPress key) StartScreen
+         | key == " "                  = Running state0
+    handle' _              StartScreen = StartScreen
+    handle' e              (Running s) = Running (handle e s)
+
+    draw' StartScreen = startScreen
+    draw' (Running s) = draw s
+
+startScreen :: Picture
+startScreen = scaled 3 3 (text "welcome to Sokoban")
+
+runInteraction :: Interaction s -> IO ()
+runInteraction (Interaction state0 step handle draw)
+  = interactionOf state0 step handle draw
 
 initialBoxes :: [Coord] --finds coords of boxes in maze
 initialBoxes = filter (\(C x y) -> isBox (maze x y)) getAllCoords
@@ -106,6 +150,12 @@ composePictures ps = foldl (&) blank ps
 drawMazeElements :: [Coord] -> [Picture]
 drawMazeElements cs = map positionBlock cs
 
+{-- draws current game state, on key press, gets updated state
+and passes it along as an Interaction --}
+exercise2 :: Interaction State
+exercise2 = Interaction initialState (\_ c -> c) handleEvent drawGameState
+
 main :: IO()
---main = interactionOf initialCoord handleTime handleEvent drawGame
-main = drawingOf (composePictures (drawMazeElements initialBoxes))
+main = runInteraction (resetable (withStartScreen exercise2))
+--main = interactionOf initialState handleTime handleEvent drawGameState
+--main = drawingOf (composePictures (drawMazeElements initialBoxes))
