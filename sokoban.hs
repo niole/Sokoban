@@ -1,6 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 import CodeWorld
+import Shapes
+import StepUtil
+import DataTypes
 import qualified Data.Text as T
+
 
 {--
 rules:
@@ -10,114 +14,12 @@ rules:
         cannot push box through other boxes or boxes in storage locations
 --}
 
-data Tile = Wall | Ground | Storage | Box | Blank
 
-data Direction = U | D | L | R
-instance Show Direction where
-        show d = directionMap d
-
-directionMap :: Direction -> String
-directionMap U = "U"
-directionMap L = "L"
-directionMap R = "R"
-directionMap D = "D"
-
-data Coord = C Integer Integer
-instance Show Coord where
-        show (C x y) = "(C "++ show x ++ ", " ++ show y ++")"
-
-data State = State Coord Direction [Coord]
-instance Show State where
-  show (State c d bs) = "State (" ++ show c ++ show bs ++ ") " ++ show d
-
-data SSState world = StartScreen | Running world --polymorphic in terms of world
-data Interaction world = Interaction
-        world
-        (Double -> world -> world)
-        (Event -> world -> world)
-        (world -> Picture)
-
-drawTile :: Tile -> Picture
-drawTile Wall    = wall
-drawTile Ground  = ground
-drawTile Storage = storage
-drawTile Box     = box
-drawTile Blank   = background
-
-background :: Picture
-background = colored white (solidRectangle 1.0 1.0)
-
-wall :: Picture
-wall = colored (gray 0.5) (solidRectangle 1.0 1.0)
-
-ground :: Picture
-ground = colored yellow (solidRectangle 1.0 1.0)
-
-storage :: Picture
-storage = colored black (solidCircle 0.25 ) & ground
-
-box :: Picture
-box = colored brown (solidRectangle 1.0 1.0)
-
-player :: Picture
-player = colored red (solidCircle 0.25 ) & ground
-
-maze :: Coord -> Tile
-maze (C x y)
-  | abs x > 4  || abs y > 4  = Blank
-  | abs x == 4 || abs y == 4 = Wall
-  | x ==  2 && y <= 0        = Wall
-  | x ==  3 && y <= 0        = Storage
-  | otherwise                = Ground
-
-positionBlock :: (Coord -> Tile) -> Coord -> Picture
-positionBlock helper (C x y) = translated (fromIntegral x) (fromIntegral y) (drawTile (helper (C x y)) )
-
-completeCoord :: Integer -> Integer -> Coord
-completeCoord x y = C x y
-
-getYs :: Integer -> [Coord]
-getYs x = map (completeCoord x) [-10..10]
-
-getAllCoords :: [Coord]
-getAllCoords = [-10..10] >>= getYs
-
-pictureOfMaze :: [Coord] -> Picture
-pictureOfMaze boxes = composePictures ( drawMazeElements boxes getAllCoords )
-
-{--
-        hardcoded
---}
-initialState :: State
-initialState = State (C 0 (-1)) D initialBoxes
-
-{--
-        based on new direction, returns a valid game state
---}
 step :: Direction -> State -> State
 step U (State p d bs) = getValidStep U (State p d bs) (stepUp p)
 step D (State p d bs) = getValidStep D (State p d bs) (stepDown p)
 step L (State p d bs) = getValidStep L (State p d bs) (stepLeft p)
 step R (State p d bs) = getValidStep R (State p d bs) (stepRight p)
-
-stepUp :: Coord -> Coord
-stepUp (C x y) = (C x (y+1))
-
-stepDown :: Coord -> Coord
-stepDown (C x y) = (C x (y-1))
-
-stepLeft :: Coord -> Coord
-stepLeft (C x y) = (C (x-1) y)
-
-stepRight :: Coord -> Coord
-stepRight (C x y) = (C (x+1) y)
-
-isDone :: [Coord] -> Bool
-isDone boxes = all (\c -> isStorage (maze c)) boxes
-
-isStorage :: Tile -> Bool
-isStorage Storage = True
-isStorage _ = False
 
 {--
         Takes proposed direction, old state and proposed
@@ -152,20 +54,44 @@ checkBoxStep stepper p (State oldP oldDir bs) newDir
         | isOk (maze (stepper p)) = State p newDir (updateBoxState stepper p bs)
         | otherwise = State oldP oldDir bs
 
+maze :: Coord -> Tile
+maze (C x y)
+  | abs x > 4  || abs y > 4  = Blank
+  | abs x == 4 || abs y == 4 = Wall
+  | x ==  2 && y <= 0        = Wall
+  | x ==  3 && y <= 0        = Storage
+  | otherwise                = Ground
+
+positionBlock :: (Coord -> Tile) -> Coord -> Picture
+positionBlock helper (C x y) = translated (fromIntegral x) (fromIntegral y) (drawTile (helper (C x y)) )
+
+completeCoord :: Integer -> Integer -> Coord
+completeCoord x y = C x y
+
+getYs :: Integer -> [Coord]
+getYs x = map (completeCoord x) [-10..10]
+
+getAllCoords :: [Coord]
+getAllCoords = [-10..10] >>= getYs
+
+pictureOfMaze :: [Coord] -> Picture
+pictureOfMaze boxes = composePictures ( drawMazeElements boxes getAllCoords )
+
+{--
+        hardcoded
+--}
+initialState :: State
+initialState = State (C 0 (-1)) D initialBoxes
+
+{--
+        based on new direction, returns a valid game state
+--}
+
+isDone :: [Coord] -> Bool
+isDone boxes = all (\c -> isStorage (maze c)) boxes
+
 updateBoxState :: (Coord -> Coord) -> Coord -> [Coord] -> [Coord]
 updateBoxState stepper p bs = map (\b -> if (eqCoords p b) then stepper b else b) bs
-
-eqCoords :: Coord -> Coord -> Bool
-eqCoords (C x y) (C x1 y1) = x == x1 && y == y1
-
-isBox :: Coord -> [Coord] -> Bool
-isBox p (c:cs) = if (eqCoords p c) then True else isBox p cs
-isBox p [] = False
-
-isOk :: Tile -> Bool
-isOk  Ground = True
-isOk  Storage = True
-isOk  _ = False
 
 handleEvent :: Event -> State -> State
 handleEvent (KeyPress key) state
@@ -174,9 +100,6 @@ handleEvent (KeyPress key) state
     | key == "Left"  = step L state
     | key == "Down"  = step D state
 handleEvent _ state      = state
-
-handleTime :: Double -> Coord -> Coord
-handleTime _ c = c
 
 drawGameState :: State -> Picture
 drawGameState (State c _ bs) = composePictures [showEndScreen bs, (atCoord c player), pictureOfMaze bs ]
@@ -233,8 +156,8 @@ composePictures ps = foldl (&) blank ps
 
 {-- draws current game state, on key press, gets updated state
 and passes it along as an Interaction --}
-startState :: Interaction State
-startState = Interaction initialState (\_ c -> c) handleEvent drawGameState
+start :: Interaction State
+start = Interaction initialState (\_ c -> c) handleEvent drawGameState
 
 main :: IO()
-main = runInteraction (resetable (withStartScreen startState))
+main = runInteraction (resetable (withStartScreen start))

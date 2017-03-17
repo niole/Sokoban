@@ -1,3 +1,6 @@
 sokoban
-sokoban.hi
-sokoban.o
+StepUtil
+Shapes
+DataTypes
+*.hi
+*.o
