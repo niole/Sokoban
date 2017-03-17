@@ -148,12 +148,6 @@ runInteraction (Interaction state0 step handle draw)
 initialBoxes :: [Coord] --finds coords of boxes in maze
 initialBoxes = [C (-2) 0, C (-1) 0, C 0 0, C 1 0]
 
-atCoord :: Coord -> Picture -> Picture
-atCoord (C x y) p = translated (fromIntegral x) (fromIntegral y) p
-
-composePictures :: [Picture] -> Picture
-composePictures ps = foldl (&) blank ps
-
 {-- draws current game state, on key press, gets updated state
 and passes it along as an Interaction --}
 start :: Interaction State

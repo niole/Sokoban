@@ -3,6 +3,13 @@ import CodeWorld
 import DataTypes
 import Shapes
 
+
+atCoord :: Coord -> Picture -> Picture
+atCoord (C x y) p = translated (fromIntegral x) (fromIntegral y) p
+
+composePictures :: [Picture] -> Picture
+composePictures ps = foldl (&) blank ps
+
 isOk :: Tile -> Bool
 isOk  Ground = True
 isOk  Storage = True
